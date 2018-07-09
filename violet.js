@@ -12072,7 +12072,7 @@ CTATDragSource = function() {
         console.log("the class is" + classList[index]);
         if (classList[index].includes("itemType--")){
           console.log("entered item if statement");
-          if (CTATDragSource.dict[classList[index]] <= 2){
+          if (CTATDragSource.dict[classList[index]] <= 1){
             console.log("dictionary if statement");
             CTATDragSource.dict[classList[index]] += 1;
             console.log("new dict value added " + CTATDragSource.dict[classList[index]]);
@@ -12086,8 +12086,7 @@ CTATDragSource = function() {
             var cloneId = this.id + genName;
 
             clone.setAttribute("id", cloneId);
-            clone.setAttribute("class", this.class);
-            clone.classList += " CTATDragSource--item CTATComponent itemType--" + this.id;
+            clone.setAttribute("class", this.className);
             clone.classList += " from--s";
             clone.innerHTML = this.innerHTML;
             clone.setAttribute("unselectable", "on");
