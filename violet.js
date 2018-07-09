@@ -11521,6 +11521,7 @@ CTATDragNDrop = function() {
     e.dataTransfer.setData("ctat/group", groupname);
     e.dataTransfer.setData("ctat/source", parent);
     e.dataTransfer.setData("text", this.id);
+//transfer class    
     var hid = hash(this.id);
     CTATDragNDrop.dragging[hid] = {id:this.id, group:groupname, source:parent};
     e.dataTransfer.setData("ctat/id/" + hid, hid);
@@ -11847,13 +11848,30 @@ CTATDragSource = function() {
         var limit = parseInt($(this).attr('data-ctat-max-cardinality'));
         if (isNaN(limit) || limit<0 || $(this).children().length<limit) {
           var types = new Set(e.dataTransfer.types); // DOMStringList but is marked as obsolete, so convert to set
+          
+          //check that there isn't already one in the source of the item type
+          //need to also check that the from is not source
+          var noRepeats = true;
+
+          // var item_id = e.dataTransfer.getData('text');
+          // var item = document.getElementById(item_id);
+
+          // item.classList.forEach(function(x){
+          //   // console.log('looped '+ x);
+          //   var itemIndex = x.search("itemType--");
+          //   if (itemIndex > -1){
+          //     var subs = x.slice(itemIndex);
+          //     classes = subs.split(" ")[0];
+          //     if (CTATDragSource.dict[classes] >= 1) { noRepeats = false;}
+          // }});
+
           // check if it is from a CTATDragSource
           if (types.has('ctat/group')) {
             // check if in the same group and not source
             if (e.dataTransfer.getData('text')) { // see if in Firefox and can get data
               if (e.dataTransfer.getData('ctat/group') === $(this).attr('name') && // getData does not work in webkit
                   e.dataTransfer.getData('ctat/source') !== this.id) {
-                allow_drop = true;
+                allow_drop = true && noRepeats;
               }
             } else { // get information from hash encoded store
               var dndid;
@@ -11866,7 +11884,7 @@ CTATDragSource = function() {
                   if (CTATDragSource.dragging.hasOwnProperty(hid) &&
                       CTATDragSource.dragging[hid].group === $(this).attr('name') &&
                       CTATDragSource.dragging[hid].source !== this.id) {
-                    allow_drop = true;
+                    allow_drop = true && noRepeats;
                   }
                 }
               }
@@ -12096,6 +12114,9 @@ CTATDragSource = function() {
             clone.classList.remove("CTAT--incorrect");
             clone.addEventListener('dragstart',handle_drag_start,false)
             clone.addEventListener('dragend',handle_drag_end,false);
+            if (clone.classList.contains("CTATTextInput")){
+              clone.removeChild(clone.firstChild);
+            }
           }
         }
       }
