@@ -11772,13 +11772,13 @@ CTATDragSource = function() {
   //set purpose of the dragSource component
   this.set_purpose = function(aNum) {
     switch (aNum) {
-    case 1:
+    case 1: //destination
       this.className += " sink";
       break;
-    case 2:
+    case 2: //trashcan
       this.className += " trashcan";
       break;
-    case 3:
+    case 3: //source
       this.className += " source";
       break;
     }
@@ -11796,17 +11796,17 @@ CTATDragSource = function() {
     }
   };
 
-  //this.data_ctat_handlers['max-cardinality'] = this.set_child_limit;
+  this.data_ctat_handlers['max-cardinality'] = this.set_child_limit;
 
   /********************* Initialization ************************/
   var dnd = null;
-
+  
   if (!CTATDragSource.dict){
-    CTATDragSource.dict={};
+    CTATDragSource.dict ={};
   }
 
   this.init = function() {
-  dnd = this.getDivWrap();
+    dnd = this.getDivWrap();
 
     if (!$(dnd).attr('name')) {
       var gname = CTATDragSource.default_groupname;
@@ -11816,9 +11816,12 @@ CTATDragSource = function() {
       $(dnd).attr('name',gname);
     }
     this.setComponent(dnd);
+
     // Do not need to re-parent any children or create a div
     // Not sure if this.addComponentReference(this,this.getDivWrap()) is required as it should not be tabbed
+
     CTATComponentReference.add(this,dnd); // Not sure we need CTATComponentReference in general...
+
     if (!CTATConfiguration.get('previewMode'))
     {
       $(dnd).children().addClass('CTATDragSource--item').attr({
@@ -11826,9 +11829,9 @@ CTATDragSource = function() {
         draggable: true,
       }).each(function(){
         //setting the from attribute
-        this.classList.add("from--s");
+        this.classList.add("from--s"); //marker from source
 
-        // Add generated id if id does not exist!
+        // Add generated id if id does not exist
         if (!this.id) this.id = CTATGlobalFunctions.gensym.div_id();
         this.addEventListener('dragstart',handle_drag_start,false);
         this.addEventListener('dragend',handle_drag_end,false);
@@ -11837,9 +11840,7 @@ CTATDragSource = function() {
         CTATDragSource.dict["itemType--"+this.id] = 1;
       });
     }
-    /**
-     * @listens dragover
-     */
+
     this.component.addEventListener('dragover', function(e) {
       /** @this dnd */
       var allow_drop = false;
@@ -11905,6 +11906,7 @@ CTATDragSource = function() {
      * @listens drop
      */
     this.component.addEventListener('drop', function(e) {
+      console.log("entered drop");
       
       /* @this CTATDragSource.component */
       e.preventDefault();
@@ -11918,113 +11920,65 @@ CTATDragSource = function() {
         var item = document.getElementById(item_id);
         //console.log(this,item_id,item);
         this.appendChild(item);
+        var pointer = this;
         $('#'+item_id).removeClass('CTAT--correct CTAT--incorrect CTAT--hint');
 
-      //handles drags to trashcan
-      if (this.classList.contains('trashcan')){
-          while (this.hasChildNodes()){
-            var classes;
-            item.classList.forEach(function(x){
-            // console.log('looped '+ x);
-            var itemIndex = x.search("itemType--");
-            if (itemIndex > -1){
-              var subs = x.slice(itemIndex);
-              classes = subs.split(" ")[0];
-            // console.log(CTATDragSource.dict[classes]);
-            }});
-
-          item.classList.forEach(function(x){
-            var fromIndex = x.search("from--");
-            if (fromIndex > -1) {
-              // console.log("entered fromIndex if statement");
-              var fromSubs = x.slice(fromIndex);
-              // console.log("fromSubs is " + fromSubs);
-              var fromClass = fromSubs.split(" ")[0];
-              // console.log("fromClass is " + fromClass);
-              var fromChar = fromClass.charAt(6);
-              // console.log("fromChar is " + fromChar);
-              //moving from source to trash
-              if (fromChar == 's'){
-                console.log("moving item from source to trash");
+        //handles drags to trashcan
+        if (this.classList.contains('trashcan')){
+            while (this.hasChildNodes()){
+              var classes,source;
+              this.childNodes[0].classList.forEach(function(x){
+                if (x.includes("itemType--")){
+                  classes = x;
+                }
+                if (x.includes("from--")){
+                  source = x;
+                }
+              })
+              if (source === "from--s"){
                 CTATDragSource.dict[classes] -= 1;
-                console.log("new dict value " + CTATDragSource.dict[classes]); 
               }
+              this.removeChild(this.childNodes[0]);
             }
-          });
-            this.removeChild(this.childNodes[0]);
         }
-      }
 
-      //updates source array info when item dragged to source
-      if (this.classList.contains('source')){
-        console.log("in source if statement");
-        var classes;
-        item.classList.forEach(function(x){
-          // console.log('looped '+ x);
-          var index = x.search("itemType--");
-          if (index > -1){
-            var subs = x.slice(index);
-            classes = subs.split(" ")[0];}
-          });
-
+        //updates source CTATDragSource.dict info when item dragged to source
+        if (this.classList.contains('source')){
           item.classList.forEach(function(x){
-            var fromIndex = x.search("from--");
-            if (fromIndex > -1) {
-              var fromSubs = x.slice(fromIndex);
-              var fromClass = fromSubs.split(" ")[0];
-              var fromChar = fromClass.charAt(6);
-              //moving from source to trash
-              if (fromChar == 'd'){
-                console.log("moving item from destination to source");
-                console.log(classes);
-                CTATDragSource.dict[classes] += 1;
-                console.log("new dict value " + CTATDragSource.dict[classes]); 
+            if (x.includes("itemType--")){
+              CTATDragSource.dict[x] += 1;
+              if (CTATDragSource.dict[x] >= 2){
+                pointer.removeChild(item);
+                CTATDragSource.dict[x] -= 1;
               }
             }
-          });
-            // console.log("new dict value " + dict[classes]);
-
+          })
           item.classList.remove("from--s");
           item.classList.remove("from--d");
-          item.classList.add("from--s");
-          
-      }
+          item.classList.add("from--s");     
+        }
 
-      //updates destination array info when item dragged to source
-      if (this.classList.contains('destination')){
-        console.log("in destination if statement");
-        var classes;
-        item.classList.forEach(function(x){
-          // console.log('looped '+ x);
-          var index = x.search("itemType--");
-          if (index > -1){
-            var subs = x.slice(index);
-            classes = subs.split(" ")[0];}
-          });
-
+        //updates destination array info when item dragged to source
+        if (this.classList.contains('destination')){
+          var classes, source;
           item.classList.forEach(function(x){
-            var fromIndex = x.search("from--");
-            if (fromIndex > -1) {
-              var fromSubs = x.slice(fromIndex);
-              var fromClass = fromSubs.split(" ")[0];
-              var fromChar = fromClass.charAt(6);
-              //moving from source to trash
-              if (fromChar == 's'){
-                console.log("moving item from source to destination");
-                CTATDragSource.dict[classes] -= 1;
-                console.log("new dict value " + CTATDragSource.dict[classes]); 
-              }
+            if (x.includes("itemType--")){
+              classes = x;
             }
-          });
-            // console.log("new dict value " + dict[classes]);
+            if (x.includes("from--")){
+              source = x;
+            }
+          })
+          if (source === "from--s"){
+            CTATDragSource.dict[classes] -=1;
+          }
 
           item.classList.remove("from--s");
           item.classList.remove("from--d");
           item.classList.add("from--d");
-      }
+        }
 
-
-      else {
+        else { //?????
           comp.setActionInput('Add',item_id);
           //console.log(comp.getSAI().getSelection(),comp.getSAI().getAction(),comp.getSAI().getInput());
           comp.processAction();
@@ -12140,7 +12094,7 @@ CTATDragSource = function() {
     var dndid;
     for (var i=0; i<e.dataTransfer.types.length; i++) {
       //console.log(e.dataTransfer.types[i]);
-      dndid = /^ctat\/id\/(.+)$/.exec(e.dataTransfer.types[i]);
+      dndid = /^ctat\/id\/(.+)$/.exec(e.dataTransfer.types[i]); //?????
       if (dndid) {
         var hid = dndid[1];
         if (CTATDragSource.dragging.hasOwnProperty(hid)) {
