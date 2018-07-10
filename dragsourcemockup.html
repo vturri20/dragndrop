@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset = "UTF-8">
+    <title>Solve for x</title>
+    <meta http-equiv="cache-control" content="no-cache">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <link rel="stylesheet" href="https://cdn.ctat.cs.cmu.edu/releases/latest/CTAT.css">
+
+    <link rel = "stylesheet"
+      type = "text/css"
+      href = "double-styles.css">
+
+    <script type="text/javascript" src="base.js"></script>
+    <script type="text/javascript" src="https://cdn.ctat.cs.cmu.edu/html-editor/js/jquery.js"></script>
+    <script type="text/javascript" src="https://cdn.ctat.cs.cmu.edu/html-editor/js/jquery-ui.js"></script>
+    <script type="text/javascript" src="CTATLoader.js"></script>
+<!--     <script type="text/javascript" src="http://localhost:8080/HTML5/src/CTATComponents/CTATDragSource.js"></script> -->
+    
+    <script type="text/javascript" src="violet.js"></script>
+
+
+
+    <script>
+     function ctatOnload() {
+       initTutor({"question_file":'2rounds.brd'});
+     };
+    </script>
+  </head>
+
+  <body>
+  <!-- explanatory text boxes -->
+    <div id="text1" class="CTATTextField">Please solve for x</div>
+    <div id="text2" class="CTATTextField">6x+4 = 22</div>
+  
+          <!-- equation -->
+          <table id = "equation">
+            <tr id = "row1">
+              <td><div id= "leftSide" class="CTATTextField r" data-ctat-enabled="false">6x+4</div></td>
+              <td><div id= "eq" class="CTATTextField" data-ctat-enabled="false">=</div></td>
+              <td><div id= "rightSide" class="CTATTextField l" data-ctat-enabled= "false">22</div></td>
+            </tr>
+          </table>
+<table>
+    <tr>
+        <!-- source -->
+        <td><div id="source" class="CTATDragSource" name="CTATgroup">
+          <div id="blank" class="CTATTextInput dnd"></div>
+          <div id="dndcircle" style="width:48px;height:48px;"><svg width="48" height="48"><circle cx="24" cy="24" r="20" stroke="darkblue"fill="blue" stroke-width="2px"/>
+          </svg>
+          </div>
+          <div id="dndtext" class="unselectable">Square</div>
+          <!-- <img id="dndimg" src="maxgoof.jpg"/> -->
+          <span id="dndtri" class="unselectable">triangle</span>
+</div>
+
+        </div></td>
+
+        <!-- destination -->
+        <td><div id="leftDest" class= "CTATDragSource destination" name="CTATgroup"></div></td>
+        <td><div id="rightDest" class= "CTATDragSource destination" name="CTATgroup"></div></td>
+    </tr>
+</table>
+
+<div id="trash" class= "CTATDragSource trashcan" name="CTATgroup"></div>
+
+
+<!-- submit button -->
+<!--   <div id="submit" class="CTATSubmitButton" data-ctat-target="destination" data-ctat-show-feedback="false">Submit
+  </div> -->
+
+  <!--hint and done-->
+    <div id="hintwidget">
+      <table>
+        <tbody>
+          <tr>
+            <!-- Big table -->
+            <td><div id="window" class="CTATHintWindow"></div></td>
+            <td>
+              <!-- Small table consisting of the two buttons -->
+              <div id="hint" class="CTATHintButton"></div>
+              <div id="done" class="CTATDoneButton"></div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+<!-- <div id="text3" class="CTATTextField">Your steps:</div>
+  <ul id= "steps">
+    <li>6x+4 = 22</li>
+  </ul> -->
+
+
+  </body>
+</html>
