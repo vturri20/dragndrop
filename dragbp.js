@@ -50,27 +50,92 @@ CTATDragSource = function() {
 		var lim = parseInt($(this.component).attr('data-ctat-max-cardinality'));
 		return isNaN(lim)?-1:lim;
 	};
+
 	//this.data_ctat_handlers['max-cardinality'] = this.set_child_limit;
+
+	//set purpose of the dragSource component
+	this.set_purpose = function(aNum) {
+		switch (aNum) {
+			case 1: //destination
+				this.className += " sink";
+	      		break;
+	    	case 2: //trashcan
+	      		this.className += " trashcan";
+	      		break;
+	    	case 3: //source
+	      		this.className += " source";
+	      		break;
+	    }
+	};
+	  
+	this.get_purpose =function(){
+	    if (this.classList.contains("sink")) {
+	      	return "sink";
+	    }
+	    else if (this.classList.contains("trashcan")){
+	      	return "trashcan";
+	    }
+	    else {
+	      	return "source";
+	    }
+	 };
 
 	/***************** Event handlers ******************/
 	var hash = function (s) {
 		return s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0); return a&a;},0);
 	};
 	var handle_drag_start = function (e) {
+		//add a new element to the source
+
 		//console.log('Starting to drag '+e.target.id);
 		var groupname = $(this).parent().attr('name');
 		var parent = $(this).parent().attr('id');
 		e.dataTransfer.setData('ctat/group', groupname); // encoding into type does not work as it will be forced lowercase
 		e.dataTransfer.setData('ctat/source', parent);
-		e.dataTransfer.setData('text', this.id);
-		var hid = hash(this.id);
-		CTATDragSource.dragging[hid] = {
-				id: this.id,
+
+		if (document.getElementById(parent).classList.contains("source")){
+			console.log("reached clone");
+	        var clone = document.createElement("div");
+	        var genName = CTATGlobalFunctions.gensym.div_id().slice(7);
+	        var cloneId = this.id + genName;
+
+	        clone.setAttribute("id", cloneId);
+	        clone.setAttribute("class", this.className);
+	        clone.innerHTML = this.innerHTML;
+	        clone.setAttribute("unselectable", "on");
+	        clone.setAttribute("draggable", "true");
+	        clone.addEventListener('dragstart',handle_drag_start,false)
+	        clone.addEventListener('dragend',handle_drag_end,false);
+	        if (clone.classList.contains("CTATTextInput")){
+	          clone.removeChild(clone.firstChild);
+	        }
+	        
+	        var cloneSource = document.getElementById(parent);
+			cloneSource.append(clone);
+			clone.style.visibility="hidden";
+
+			
+			e.dataTransfer.setData('text', cloneId);
+			var hid = hash(cloneId);
+			e.dataTransfer.setData('ctat/id/'+hid,hid);
+			CTATDragSource.dragging[hid] = {
+				id: cloneId,
 				group: groupname,
 				source: parent
-		};
-		e.dataTransfer.setData('ctat/id/'+hid,hid);
+			};
+		}
+		else {
+			e.dataTransfer.setData('text', this.id);
+			var hid = hash(this.id);
+			e.dataTransfer.setData('ctat/id/'+hid,hid);
+			CTATDragSource.dragging[hid] = {
+					id: this.id,
+					group: groupname,
+					source: parent
+			};
+		}
 	};
+
 	var handle_drag_end = function (e) {
 		var dndid;
 		for (var i=0; i<e.dataTransfer.types.length; i++) {
@@ -151,6 +216,10 @@ CTATDragSource = function() {
 					}
 				}
 			}
+			//console.log("target id " + e.target.id);
+			if (e.target.classList.contains("source")){ //dropping in source is
+        		allow_drop = false;
+      		}
 			if (allow_drop) {
 				e.preventDefault();
 				e.dataTransfer.effectAllowed = "move";
@@ -168,19 +237,32 @@ CTATDragSource = function() {
 			e.preventDefault();
 			this.classList.remove('CTATDragSource--valid-drop');
 
+			var pointer = this;
+
 			var comp = $(this).data('CTATComponent');
 			if (comp.getEnabled()) { // accept things only when enabled.
 				var item_id = e.dataTransfer.getData('text');
 				var source_id = e.dataTransfer.getData('ctat/source');
 				//console.log('CTATDragSource '+e.target.id+' got drop '+item_id);
 				var item = document.getElementById(item_id);
-				//console.log(this,item_id,item);
-				this.appendChild(item);
-				$('#'+item_id).removeClass('CTAT--correct CTAT--incorrect CTAT--hint');
 
-				comp.setActionInput('Add',item_id);
-				//console.log(comp.getSAI().getSelection(),comp.getSAI().getAction(),comp.getSAI().getInput());
-				comp.processAction();
+				this.appendChild(item);
+				console.log("drop id " + pointer.id);
+
+				if (pointer.classList.contains('trashcan')){
+					this.removeChild(item);
+				}
+				if (pointer.classList.contains('source')){
+					this.removeChild(item);
+				}
+				else {
+					item.style.visibility="unset";
+					//console.log(this,item_id,item);
+					$('#'+item_id).removeClass('CTAT--correct CTAT--incorrect CTAT--hint');
+					comp.setActionInput('Add',item_id);
+					//console.log(comp.getSAI().getSelection(),comp.getSAI().getAction(),comp.getSAI().getInput());
+					comp.processAction();
+				}
 			}
 		}, false);
 

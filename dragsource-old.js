@@ -84,7 +84,7 @@ CTATDragSource = function() {
     }
   };
 
-  this.data_ctat_handlers['max-cardinality'] = this.set_child_limit;
+  //this.data_ctat_handlers['max-cardinality'] = this.set_child_limit;
 
   /********************* Initialization ************************/
   var dnd = null;
@@ -247,7 +247,7 @@ CTATDragSource = function() {
         }
 
         //updates destination array info when item dragged to source
-        if (this.classList.contains('destination')){
+        if (this.classList.contains('sink')){
           var classes, source;
           item.classList.forEach(function(x){
             if (x.includes("itemType--")){
