@@ -107,7 +107,11 @@ CTATDragSource = function() {
 	        clone.addEventListener('dragstart',handle_drag_start,false)
 	        clone.addEventListener('dragend',handle_drag_end,false);
 	        if (clone.classList.contains("CTATTextInput")){
-	          clone.removeChild(clone.firstChild);
+	        	clone.firstChild.value = this.firstChild.value;
+	        	this.firstChild.value = "";
+	        	this.firstChild.classList.remove("CTAT--incorrect");
+	        	this.firstChild.classList.remove("CTAT--correct");
+	        	this.firstChild.classList.remove("CTAT--hint");
 	        }
 	        
 	        var cloneSource = document.getElementById(parent);
@@ -249,13 +253,20 @@ CTATDragSource = function() {
 				this.appendChild(item);
 				console.log("drop id " + pointer.id);
 
+				if (item.classList.contains('CTATTextInput')){
+					item.firstChild.id = item.childNodes[1].id;
+					item.removeChild(item.childNodes[1]);
+					//item.childNodes[1].value = item.firstChild.value;
+					//item.removeChild(item.firstChild);
+				}
+
 				if (pointer.classList.contains('trashcan')){
 					this.removeChild(item);
 				}
 				if (pointer.classList.contains('source')){
 					this.removeChild(item);
 				}
-				else {
+				if (pointer.classList.contains('sink')) {
 					item.style.visibility="unset";
 					//console.log(this,item_id,item);
 					$('#'+item_id).removeClass('CTAT--correct CTAT--incorrect CTAT--hint');
