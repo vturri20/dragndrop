@@ -1,8 +1,6 @@
 /**
  * @fileoverview Defined the CTATDragSource component, a CTAT component that
- * supports bucket sorting type tasks. Builds on CTATDragnDrop by allowing clones
- * CTAT Components are disabled in source and only enabled after being dropped into destination
- * To set up a CTATDragSource, use the following
+ * supports bucket sorting type tasks. To set up a CTATDragSource, use the following
  * example:
  * <div id="source" class="CTATDragSource"><div>your item1</div>...</div>
  * id and class attributes are required. If no name attribute is provided, the
@@ -14,13 +12,9 @@
  * is not supplied, then CTATDragSource will generate one for each child without
  * an id attribute, but it is unrealistic to expect that the generated names
  * will be universally consistent.
- * The data-ctat-purpose attribute takes a string and determines whether a div is
- * source (cloning takes place), destination or trash (deletion)
- * Not specifiying data-ctat-purpose attribute defaults to destination.
  *
- *  @author: $Author of CTATDragNDrop: mdb91 $
- * @author: $Authors of CTATDragNDrop: vmt26 and bpek $
- *  @version: $Revision: 1 $
+ *  @author: $Author: mdb91 $
+ *  @version: $Revision: 24369 $
  */
 
 /*
@@ -57,24 +51,32 @@ CTATDragSource = function() {
 		return isNaN(lim)?-1:lim;
 	};
 
-	//set purpose of the dragSource component
-	 this.set_purpose = function(aString) {
-		if (aString){
-			$(this.component).attr('data-ctat-purpose', aString);
-		}
-		else{
-			$(this.component).attr('data-ctat-purpose', "destination")
-		}
-	};
+	//this.data_ctat_handlers['max-cardinality'] = this.set_child_limit;
 
-	this.setParameterHandler("Purpose", this.set_purpose);
-	  
-	this.get_purpose = function() {
-	    if ($(this.component).attr('data-ctat-purpose')){
-	    	return $(this.component).attr('data-ctat-purpose');
+	//set purpose of the dragSource component
+	this.set_purpose = function(aNum) {
+		switch (aNum) {
+			case 1: //destination
+				this.className += " sink";
+	      		break;
+	    	case 2: //trashcan
+	      		this.className += " trashcan";
+	      		break;
+	    	case 3: //source
+	      		this.className += " source";
+	      		break;
 	    }
-	    else{
-	    	return "destination";
+	};
+	  
+	this.get_purpose =function(){
+	    if (this.classList.contains("sink")) {
+	      	return "sink";
+	    }
+	    else if (this.classList.contains("trashcan")){
+	      	return "trashcan";
+	    }
+	    else {
+	      	return "source";
 	    }
 	 };
 
@@ -84,16 +86,24 @@ CTATDragSource = function() {
 	};
 
 	var handle_drag_start = function (e) {
+		//add a new element to the source
+
 		//console.log('Starting to drag '+e.target.id);
 		var groupname = $(this).parent().attr('name');
 		var parent = $(this).parent().attr('id');
 		e.dataTransfer.setData('ctat/group', groupname); // encoding into type does not work as it will be forced lowercase
 		e.dataTransfer.setData('ctat/source', parent);
 		e.dataTransfer.setData('source', this.id);
+		//e.dataTransfer.setData('length', this.childNodes.length);
 
-		//if (document.getElementById(parent).classList.contains("source")){ 
-		if ($("#" + parent).attr('data-ctat-purpose') === "source") {
+		if (document.getElementById(parent).classList.contains("source")){  
 			var cloneId = this.id + CTATGlobalFunctions.gensym.div_id().slice(7);
+
+			//var clone = document.getElementById(this.id).cloneNode(true);
+			//clone.id = cloneId;
+			//document.getElementById(parent).append(clone);
+			//clone.style.visibility = "hidden";
+
 			e.dataTransfer.setData('text', cloneId);
 			var hid = hash(cloneId);
 			e.dataTransfer.setData('ctat/id/'+hid,hid);
@@ -131,6 +141,7 @@ CTATDragSource = function() {
 		}
 	};
 	/********************* Initialization ************************/
+	
 	var dnd = null;
 	this.init = function() {
 		dnd = this.getDivWrap();
@@ -142,7 +153,6 @@ CTATDragSource = function() {
 			$(dnd).attr('name',gname);
 		}
 		this.setComponent(dnd);
-		//this.set_purpose(); //added to determine source/destination/trashcan
 		// Do not need to re-parent any children or create a div
 		// Not sure if this.addComponentReference(this,this.getDivWrap()) is required as it should not be tabbed
 		CTATComponentReference.add(this,dnd); // Not sure we need CTATComponentReference in general...
@@ -198,8 +208,7 @@ CTATDragSource = function() {
 				}
 			}
 			//console.log("target id " + e.target.id);
-			//if (e.target.classList.contains("source")){ //dropping in source is not allowed
-			if ($(e.target).attr('data-ctat-purpose') === "source") { //dropping in source not allowed
+			if (e.target.classList.contains("source")){ //dropping in source is
         		allow_drop = false;
       		}
 			if (allow_drop) {
@@ -345,16 +354,13 @@ CTATDragSource = function() {
 					}
 					*/
 
-				//if (this.classList.contains('trashcan')){
-				if ($(this).attr('data-ctat-purpose') === "trashcan") {
+				if (this.classList.contains('trashcan')){
 					this.removeChild(item);
 				}
-				//if (this.classList.contains('source')){
-				if ($(this).attr('data-ctat-purpose') === "source") {
+				if (this.classList.contains('source')){
 					this.removeChild(item);
 				}
-				//if (this.classList.contains('destination')) {
-				if ($(this).attr('data-ctat-purpose') === "destination") {
+				if (this.classList.contains('sink')) {
 					item.style.visibility="unset";
 					$('#'+item_id).removeClass('CTAT--correct CTAT--incorrect CTAT--hint');
 					comp.setActionInput('Add',item_id);
@@ -406,7 +412,7 @@ CTATDragSource = function() {
 	/**
 	 * Moves the entity with the given id to this component.
 	 * @param {String} aId - the id of an entity in the dom.
-	 * Note: this method tests if the entity has the CTAT-DragSource--item class
+	 * Note: this method tests if the entity has the CTAT-DragNDrop--item class
 	 * and if it does not, it will add it, set some appropriate properties, and
 	 * add appropriate event listeners.
 	 */
@@ -481,7 +487,7 @@ CTATDragSource = function() {
 };
 
 CTATDragSource.dragging = {};
-CTATDragSource.default_groupname = 'DragSourceGroup';
+CTATDragSource.default_groupname = 'DragNDropGroup';
 
 
 CTATDragSource.prototype = Object.create(CTAT.Component.Base.Tutorable.prototype);

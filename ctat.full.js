@@ -16260,6 +16260,7 @@ CTATTextInput = function(aDescription, aX, aY, aWidth, aHeight) {
   this.init = function init() {
     this.ctatdebug("init (" + pointer.getName() + ")");
     textinput = document.createElement("input");
+    console.trace("created child input");
     textinput.type = "text";
     if (aDescription) {
       textinput.name = aDescription.name;
@@ -16654,6 +16655,7 @@ var CTATComponentMutObserver = new MutationObserver(function(mutations, pointer)
           while (ctatClass = CTATClassRegex.exec(addedNode.className)) {
             if (CTAT.ComponentRegistry[ctatClass[1]]) {
               CTATComponentMutObserver.disconnect();
+              console.trace("testing CTAT Component ", i , $(addedNode).data("CTATComponent"));
               CTATTutor.initializeHTMLComponent(addedNode, ctatClass[1]);
               CTATComponentMutObserver.observe(document.body, {childList:true, subtree:true});
               break;
