@@ -13188,6 +13188,15 @@ var CTATMathInput = function() {
     mathDiv = document.createElement("div");
     mathDiv.id = div.id + "_math";
     div.appendChild(mathDiv);
+    /*function removeButtons (gupDiv){
+      gupDiv.removeChild(gupDiv.lastChild);
+    }
+    function createGuppy (gup, gupDiv, callback) {
+      gup = new Guppy(gupDiv.id);
+      callback(gupDiv)
+    }
+    createGuppy(mathinput, mathDiv, removeButtons);
+    */
     mathinput = new Guppy(mathDiv.id);
     newDiv = document.createElement("div");
     newDiv.id = pointer.getDivWrap().id + "_new";

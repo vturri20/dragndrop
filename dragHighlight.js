@@ -72,33 +72,10 @@ CTATDragSource = function() {
     var parent = $(this).parent().attr('id');
     e.dataTransfer.setData('ctat/group', groupname); // encoding into type does not work as it will be forced lowercase
     e.dataTransfer.setData('ctat/source', parent);
+    e.dataTransfer.setData('source', this.id);
 
     if (document.getElementById(parent).classList.contains("source")){
-      console.log("reached clone");
-          var clone = document.createElement("div");
-          var genName = CTATGlobalFunctions.gensym.div_id().slice(7);
-          var cloneId = this.id + genName;
-
-          clone.setAttribute("id", cloneId);
-          clone.setAttribute("class", this.className);
-          clone.innerHTML = this.innerHTML;
-          clone.setAttribute("unselectable", "on");
-          clone.setAttribute("draggable", "true");
-          clone.addEventListener('dragstart',handle_drag_start,false);
-          clone.addEventListener('dragend',handle_drag_end,false);
-          if (clone.classList.contains("CTATTextInput")){
-            clone.firstChild.value = this.firstChild.value;
-            this.firstChild.value = "";
-            this.firstChild.classList.remove("CTAT--incorrect");
-            this.firstChild.classList.remove("CTAT--correct");
-            this.firstChild.classList.remove("CTAT--hint");
-          }
-          
-        var cloneSource = document.getElementById(parent);
-        cloneSource.append(clone);
-        clone.style.visibility="hidden";
-
-      
+      var cloneId = this.id + CTATGlobalFunctions.gensym.div_id().slice(7);
       e.dataTransfer.setData('text', cloneId);
       var hid = hash(cloneId);
       e.dataTransfer.setData('ctat/id/'+hid,hid);
@@ -220,26 +197,75 @@ CTATDragSource = function() {
      */
     this.component.addEventListener('drop', function(e) {
       /* @this CTATDragSource.component */
-      console.log("in the drop");
       e.preventDefault();
 
+      this.classList.remove('CTATDragSource--valid-drop');
       var pointer = this;
 
       var comp = $(this).data('CTATComponent');
 
 
       if (comp.getEnabled() && pointer.classList.contains('CTATDragSource--valid-drop')) { // accept things only when enabled.
-        console.log("in the if");
         var item_id = e.dataTransfer.getData('text');
         var source_id = e.dataTransfer.getData('ctat/source');
         //console.log('CTATDragSource '+e.target.id+' got drop '+item_id);
-        var item = document.getElementById(item_id);
+        var item;
+        //console.log('CTATDragSource '+e.target.id+' got drop '+item_id);
 
-        if (item.classList.contains('CTATTextInput')){
-          item.firstChild.id = item.childNodes[1].id;
-          item.removeChild(item.childNodes[1]);
-          //item.childNodes[1].value = item.firstChild.value;
-          //item.removeChild(item.firstChild);
+        if (document.getElementById(item_id)){
+          item = document.getElementById(item_id);
+          this.appendChild(item);
+        }
+
+        if (!document.getElementById(item_id)){
+          var original = document.getElementById(e.dataTransfer.getData('source'));
+          item = original.cloneNode(false);
+          item.id = e.dataTransfer.getData('text');
+          item.addEventListener('dragstart',handle_drag_start,false);
+          item.addEventListener('dragend',handle_drag_end,false); //how about drops and others??
+
+          //excerpt from mutationobserver and initializeHTMLComponent
+          var componentType;
+          var CTATClassRegex = /(CTAT[A-z]*)(\s|$)/g;
+          var ctatClass = CTATClassRegex.exec(item.className)
+          if (ctatClass){
+            for (var i = 0; i < ctatClass.length; i++) {
+                    if (CTAT.ComponentRegistry[ctatClass[i]]) {
+                      componentType = ctatClass[i];
+                    }
+                }
+            }
+            if (componentType){
+              CTATTutor.initializeHTMLComponent(item, componentType);
+            }
+            this.append(item);
+
+            var oldLength = original.childNodes.length;
+            var newLength = item.childNodes.length;
+
+            if (oldLength === newLength){
+              console.log("entered lengths equal");
+              for (var i = 0; i < newLength; i++){
+                item.childNodes[i].setAttribute('class', original.childNodes[i].className);
+                item.childNodes[i].setAttribute('value',original.childNodes[i].value);
+                item.childNodes[i].innerHTML = original.childNodes[i].innerHTML;
+
+                original.childNodes[i].classList.remove("CTAT--correct");
+                original.childNodes[i].classList.remove("CTAT--incorrect");
+                original.childNodes[i].classList.remove("CTAT--hint");
+                original.childNodes[i].value = "";
+                //remove disable
+              }
+            }
+            if (oldLength !== newLength){ //consider case of no children -> NaN or 0?
+              console.log("entered lengths not equal");
+              for (var i = 0; i < newLength; i++){
+                item.removeChild(item.lastChild);
+              }
+              for (var ii = 0; ii < oldLength; ii++){
+                item.appendChild(original.childNodes[ii].cloneNode(true));
+              }
+            }
         }
 
         // if (pointer.classList.contains('trashcan')){
@@ -295,7 +321,7 @@ CTATDragSource = function() {
       
       }
 
-      else {
+      else if (x.length !== 2 && x.length !== 1){
           console.log("in the else");
           var x = document.getElementsByClassName('CTATDragSource--valid-drop');
           var i;

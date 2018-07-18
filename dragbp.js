@@ -2,8 +2,7 @@
  * @fileoverview Defined the CTATDragSource component, a CTAT component that
  * supports bucket sorting type tasks. Builds on CTATDragnDrop by allowing clones
  * CTAT Components are disabled in source and only enabled after being dropped into destination
- * To set up a CTATDragSource, use the following
- * example:
+ * To set up a CTATDragSource, use the following example:
  * <div id="source" class="CTATDragSource"><div>your item1</div>...</div>
  * id and class attributes are required. If no name attribute is provided, the
  * default one will be set. The name attribute is used to group CTATDragSource's
@@ -18,14 +17,11 @@
  * source (cloning takes place), destination or trash (deletion)
  * Not specifiying data-ctat-purpose attribute defaults to destination.
  *
- *  @author: $Author of CTATDragNDrop: mdb91 $
+ * @author: $Author of CTATDragNDrop: mdb91 $
  * @author: $Authors of CTATDragNDrop: vmt26 and bpek $
- *  @version: $Revision: 1 $
+ * @version: $Revision: 1 $
  */
 
-/*
- * TODO: feedback indicating valid drop cite fullness?
- */
 goog.provide('CTATDragSource');
 
 goog.require('CTAT.Component.Base.Tutorable');
@@ -89,10 +85,9 @@ CTATDragSource = function() {
 		var parent = $(this).parent().attr('id');
 		e.dataTransfer.setData('ctat/group', groupname); // encoding into type does not work as it will be forced lowercase
 		e.dataTransfer.setData('ctat/source', parent);
-		e.dataTransfer.setData('source', this.id);
+		e.dataTransfer.setData('original', this.id);
 
-		//if (document.getElementById(parent).classList.contains("source")){ 
-		if ($("#" + parent).attr('data-ctat-purpose') === "source") {
+		if ($("#" + parent).attr('data-ctat-purpose') === "source") { 
 			var cloneId = this.id + CTATGlobalFunctions.gensym.div_id().slice(7);
 			e.dataTransfer.setData('text', cloneId);
 			var hid = hash(cloneId);
@@ -131,6 +126,28 @@ CTATDragSource = function() {
 		}
 	};
 	/********************* Initialization ************************/
+	var pointer = this;
+	pointer.setDisabled = function (x) { //called in init, all items in source initially disabled
+		console.log("x id", x.id);
+		try{
+			if (x.type !== 'button') {x.disabled = true;}
+			if (x.hasChildNodes()){
+				for (var i = 0; i < x.childNodes.length; i++){
+					pointer.setDisabled(x.childNodes[i]);
+				}
+			}
+		}
+		catch (err){}
+	}
+	pointer.removeDisabled = function (x) { //called in drop, all items dropped in destination are enabled
+		x.disabled = false;
+		if (x.hasChildNodes()){
+			for (var i = 0; i < x.childNodes.length; i++){
+				pointer.removeDisabled(x.childNodes[i]);
+			}
+		}
+	}
+
 	var dnd = null;
 	this.init = function() {
 		dnd = this.getDivWrap();
@@ -142,9 +159,6 @@ CTATDragSource = function() {
 			$(dnd).attr('name',gname);
 		}
 		this.setComponent(dnd);
-		//this.set_purpose(); //added to determine source/destination/trashcan
-		// Do not need to re-parent any children or create a div
-		// Not sure if this.addComponentReference(this,this.getDivWrap()) is required as it should not be tabbed
 		CTATComponentReference.add(this,dnd); // Not sure we need CTATComponentReference in general...
 		if (!CTATConfiguration.get('previewMode'))
 		{
@@ -159,6 +173,10 @@ CTATDragSource = function() {
 				//this.addEventListener('dragenter');
 			});
 		}
+		if (dnd.getAttribute('data-ctat-purpose') === "source") { //all elements in source initially disabled
+			console.log("entered brandon statement");
+			pointer.setDisabled(dnd);
+      	}
 		/**
 		 * @listens dragover
 		 */
@@ -197,8 +215,6 @@ CTATDragSource = function() {
 					}
 				}
 			}
-			//console.log("target id " + e.target.id);
-			//if (e.target.classList.contains("source")){ //dropping in source is not allowed
 			if ($(e.target).attr('data-ctat-purpose') === "source") { //dropping in source not allowed
         		allow_drop = false;
       		}
@@ -221,23 +237,24 @@ CTATDragSource = function() {
 			var comp = $(this).data('CTATComponent');
 			if (comp.getEnabled()) { // accept things only when enabled.
 				var item_id = e.dataTransfer.getData('text');
-				var source_id = e.dataTransfer.getData('ctat/source');
 				var item;
 				//console.log('CTATDragSource '+e.target.id+' got drop '+item_id);
 
-				if (document.getElementById(item_id)){
+				if (document.getElementById(item_id)){ //not a clone
 					item = document.getElementById(item_id);
 					this.appendChild(item);
 				}
 
-				if (!document.getElementById(item_id)){
-					var original = document.getElementById(e.dataTransfer.getData('source'));
-					item = original.cloneNode(false);
-					item.id = e.dataTransfer.getData('text');
+				if (!document.getElementById(item_id)){ //clone coming from a source div
+					var original = document.getElementById(e.dataTransfer.getData('original'));
+					item = original.cloneNode(false); //clones nodes but not children
+					this.append(item);
+					item.id = item_id;
 					item.addEventListener('dragstart',handle_drag_start,false);
 					item.addEventListener('dragend',handle_drag_end,false); //how about drops and others??
 
-					//excerpt from mutationobserver and initializeHTMLComponent
+					//excerpt from mutationobserver and calling initializeHTMLComponent
+					//to deal with initializing new CTAT Components
 					var componentType;
 					var CTATClassRegex = /(CTAT[A-z]*)(\s|$)/g;
 					var ctatClass = CTATClassRegex.exec(item.className)
@@ -248,16 +265,24 @@ CTATDragSource = function() {
 				            }
 				        }
 				    }
-				    if (componentType){
+				    if (componentType){ //if clone is a CTAT Component, initialize it as such
+				    	console.log("brandon", componentType)
 				    	CTATTutor.initializeHTMLComponent(item, componentType);
+				    	console.log('brandon initialized HTML component');
 				    }
-				    this.append(item);
+				    
+				    item.setAttribute('draggable', true);
+					item.setAttribute('unselectable', 'on');
+					console.log('brandon set draggable true???');
 
 				    var oldLength = original.childNodes.length;
 				    var newLength = item.childNodes.length;
 
-				    if (oldLength === newLength){
-				    	console.log("entered lengths equal");
+		    		original.classList.remove("CTAT--correct");
+		    		original.classList.remove("CTAT--incorrect");
+		    		original.classList.remove("CTAT--hint");
+
+		    		if (newLength === oldLength){ //case of no children or ctat components with same no. of children
 				    	for (var i = 0; i < newLength; i++){
 				    		item.childNodes[i].setAttribute('class', original.childNodes[i].className);
 				    		item.childNodes[i].setAttribute('value',original.childNodes[i].value);
@@ -266,84 +291,21 @@ CTATDragSource = function() {
 				    		original.childNodes[i].classList.remove("CTAT--correct");
 				    		original.childNodes[i].classList.remove("CTAT--incorrect");
 				    		original.childNodes[i].classList.remove("CTAT--hint");
-				    		original.childNodes[i].value = "";
-				    		//remove disable
-				    	}
-				    }
-				    if (oldLength !== newLength){ //consider case of no children -> NaN or 0?
-				    	console.log("entered lengths not equal");
-				    	for (var i = 0; i < newLength; i++){
-				    		item.removeChild(item.lastChild);
-				    	}
-				    	for (var ii = 0; ii < oldLength; ii++){
-				    		item.appendChild(original.childNodes[ii].cloneNode(true));
-				    	}
-				    }
-				}
-
-					//if difference in child lengths, copy all child from original -> two cases (non ctat components and done ctat components)
-					//else copy all values and classes from children over
-
-
-
-				/* if jquery clone method works with deep copying children and event listeners
-				if (!document.getElementById(item_id)){					
-					//item = document.getElementById(e.dataTransfer.getData('source')).cloneNode(true);
-					//add eevent listeners (drag etc)
-					console.log('jquery called');
-					$("#" + e.dataTransfer.getData('source')).clone(true, true).appendTo(this);
-					item = this.lastChild;
-					//item.id = e.dataTransfer.getData('text');
-					
-					//excerpt from mutationobserver and initializeHTMLComponent
-					var divWrap = item;
-					var componentType;
-					var CTATClassRegex = /(CTAT[A-z]*)(\s|$)/g;
-					var ctatClass = CTATClassRegex.exec(item.className)
-					if (ctatClass){
-						for (var i = 0; i < ctatClass.length; i++) {
-				            if (CTAT.ComponentRegistry[ctatClass[i]]) {
-				              componentType = ctatClass[i];
-				            }
-				        }
-				    }
-
-					//properties are set but component.init() not called so children are not created again
-					//are there complications with SAI?
-					if (componentType){
-						var CTATComponentConstructor = CTAT.ComponentRegistry[componentType];
-						var ctat_component = new CTATComponentConstructor;
-						if ($(divWrap).attr("id")) {
-						  ctat_component.setName($(divWrap).attr("id"));
-						} else {
-						  divWrap.setAttribute("id", CTATGlobalFunctions.gensym.div_id());
-						  ctat_component.setName(divWrap.getAttribute("id"));
-						}
-						ctat_component.setDivWrapper(divWrap);
-						ctat_component.processAttributes();
-						//ctat_component.init();
-						ctat_component.processTabOrder();
-						ctat_component.setEnabled(ctat_component.getEnabled());
-						if (ctat_component.isFeedbackComponent() == false) {
-						  var compEntry = new CTATComponentDescription;
-						  compEntry.type = ctat_component.getClassName();
-						  compEntry.name = ctat_component.getName();
-						  compEntry.setComponentPointer(ctat_component);
-						  CTATShellTools.registerComponentDescription(compEntry);
-						}
-						$(divWrap).data("CTATComponent", ctat_component);
-
-						if (CTATConfiguration.get("previewMode")) {
-						  var restore = ctat_component.getDivWrap().getAttribute("data-ctat-enabled");
-						  var isEnabled = ctatEnabledInPreview[ctat_component.getClassName()];
-						  if (!isEnabled) {
-						    isEnabled = false;
-						  }
-						  ctat_component.setEnabled(isEnabled);
-						  ctat_component.getDivWrap().setAttribute("data-ctat-enabled", restore);
-						}
+					    }
 					}
-					*/
+					if (oldLength !== newLength){ //case of non-ctat component with children
+						while (item.hasChildNodes()){ //extra
+							item.removeChild(item.lastChild);
+						}
+						for (var i = 0; i < oldLength; i++){
+				    		item.appendChild(original.childNodes[i].cloneNode(true));
+
+				    		original.childNodes[i].classList.remove("CTAT--correct");
+				    		original.childNodes[i].classList.remove("CTAT--incorrect");
+				    		original.childNodes[i].classList.remove("CTAT--hint");
+					    }
+					}
+				}
 
 				//if (this.classList.contains('trashcan')){
 				if ($(this).attr('data-ctat-purpose') === "trashcan") {
@@ -354,9 +316,9 @@ CTATDragSource = function() {
 					this.removeChild(item);
 				}
 				//if (this.classList.contains('destination')) {
-				if ($(this).attr('data-ctat-purpose') === "destination") {
-					item.style.visibility="unset";
-					$('#'+item_id).removeClass('CTAT--correct CTAT--incorrect CTAT--hint');
+				if ($(this).attr('data-ctat-purpose') === "destination" || !($(this).attr('data-ctat-purpose'))) {
+					$('#'+item.id).removeClass('CTAT--correct CTAT--incorrect CTAT--hint');
+					pointer.removeDisabled(item);
 					comp.setActionInput('Add',item_id);
 					//console.log(comp.getSAI().getSelection(),comp.getSAI().getAction(),comp.getSAI().getInput());
 					comp.processAction();
