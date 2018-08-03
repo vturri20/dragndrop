@@ -1,24 +1,23 @@
 /**
- * @fileoverview Defined the CTATDragSource component, a CTAT component that
- * supports bucket sorting type tasks. Builds on CTATDragnDrop by allowing clones
+ * @fileoverview Defined the CTATDragSource component, supports bucket sorting type tasks. 
+ * Builds on CTATDragnDrop by allowing clones
  * CTAT Components are disabled in source and only enabled after being dropped into destination
+ * 
  * To set up a CTATDragSource, use the following example:
  * <div id="source" class="CTATDragSource"><div>your item1</div>...</div>
  * id and class attributes are required. If no name attribute is provided, the
  * default one will be set. The name attribute is used to group CTATDragSource's
- * into groups that allow passing of items only between group memebers.
+ * into groups that allow passing of items between members. Children should be given IDs.
  * The data-ctat-max-cardinality attribute can be set with an integer and the
  * CTATDragSource will reject drops if there is already that many items or more.
- * Child items should be given an id attribute with a unique identifier. If one
- * is not supplied, then CTATDragSource will generate one for each child without
- * an id attribute, but it is unrealistic to expect that the generated names
- * will be universally consistent.
+ * The data-ctat-max-overflow attribute can be set with an integer and the 
+ * CTATDragSource will delete firstChild if there are more than max items.
  * The data-ctat-purpose attribute takes a string and determines whether a div is
- * source (cloning takes place), destination or trash (deletion)
- * Not specifiying data-ctat-purpose attribute defaults to destination.
+ * 'source' (cloning takes place), 'destination' or 'trashcan' (deletion). Default is 'destination'
+ * SAI Tip: IDs of clones are "originalID" + "--" + number,
+ * where the number is generated from CTATGenSym, regex matching might be helpful
  *
- * @author: $Author of CTATDragNDrop: mdb91 $
- * @author: $Authors of CTATDragNDrop: vmt26 and bpek $
+ * @author: $Authors: bpek and vmt26 $
  * @version: $Revision: 1 $
  */
 
@@ -32,7 +31,7 @@ goog.require('CTATSAI');
 /**
  *
  */
-CTATDragSource = function() {
+var CTATDragSource = function() {
 	CTAT.Component.Base.Tutorable.call(this, "CTATDragSource", "aDnD");
 
 	/******************* Component Parameters ***********************/
@@ -42,7 +41,7 @@ CTATDragSource = function() {
 	});
 	// No this.data_ctat_handlers, use "name" instead.
 
-	// Max Number of Objects
+	// Max Number of Objects, then reject drops afterwards
 	this.set_child_limit = function(aNum) {
 		var val = parseInt(aNum);
 		if (!isNaN(val)) $(this.component).attr('data-ctat-max-cardinality', val);
@@ -50,6 +49,17 @@ CTATDragSource = function() {
 	this.setParameterHandler('MaxObjects', this.set_child_limit);
 	this.get_child_limit = function() {
 		var lim = parseInt($(this.component).attr('data-ctat-max-cardinality'));
+		return isNaN(lim)?-1:lim;
+	};
+
+	// Max Number of Objects, then remove top children afterwards
+	this.set_child_overflow = function(aNum) {
+		var val = parseInt(aNum);
+		if (!isNaN(val)) $(this.component).attr('data-ctat-max-overflow', val);
+	};
+	this.setParameterHandler('MaxOverflow', this.set_child_overflow);
+	this.get_child_overflow = function() {
+		var lim = parseInt($(this.component).attr('data-ctat-max-overflow'));
 		return isNaN(lim)?-1:lim;
 	};
 
@@ -62,9 +72,7 @@ CTATDragSource = function() {
 			$(this.component).attr('data-ctat-purpose', "destination")
 		}
 	};
-
 	this.setParameterHandler("Purpose", this.set_purpose);
-	  
 	this.get_purpose = function() {
 	    if ($(this.component).attr('data-ctat-purpose')){
 	    	return $(this.component).attr('data-ctat-purpose');
@@ -129,12 +137,13 @@ CTATDragSource = function() {
 	/********************* Initialization ************************/
 	var pointer = this;
 	pointer.setDisabled = function (x) { //called in init, all items in source initially disabled
-		console.log("x id", x.id);
 		try{
-			if (x.type !== 'button') {x.disabled = true;}
-			if (x.hasChildNodes()){
-				for (var i = 0; i < x.childNodes.length; i++){
-					pointer.setDisabled(x.childNodes[i]);
+			if (x.type !== 'button') {
+				x.disabled = true;
+			}
+			if (x.children.length > 0){
+				for (var i = 0; i < x.children.length; i++){
+					pointer.setDisabled(x.children[i]);
 				}
 			}
 		}
@@ -142,12 +151,24 @@ CTATDragSource = function() {
 	}
 	pointer.removeDisabled = function (x) { //called in drop, all items dropped in destination are enabled
 		x.disabled = false;
-		if (x.hasChildNodes()){
-			for (var i = 0; i < x.childNodes.length; i++){
-				pointer.removeDisabled(x.childNodes[i]);
+		if (x.children.length > 0){
+			for (var i = 0; i < x.children.length; i++){
+				pointer.removeDisabled(x.children[i]);
 			}
 		}
 	}
+	pointer.animatedRemove = function (childID) {
+    	$('#'+childID).animate({
+	      opacity:0.1,
+	      zoom: 1.3,
+    	}, 500, 'swing', 
+	      	function() {
+		        var focus = document.getElementById(childID);
+		        var parent = focus.parentNode;
+		        parent.removeChild(focus);
+	      	}
+      	)
+    };
 
 	var dnd = null;
 	this.init = function() {
@@ -175,8 +196,9 @@ CTATDragSource = function() {
 			});
 		}
 		if (dnd.getAttribute('data-ctat-purpose') === "source") { //all elements in source initially disabled
-			console.log("entered brandon statement");
-			pointer.setDisabled(dnd);
+			window.onload = function () {
+				pointer.setDisabled(dnd);
+			}
       	}
 		/**
 		 * @listens dragover
@@ -267,14 +289,11 @@ CTATDragSource = function() {
 				        }
 				    }
 				    if (componentType){ //if clone is a CTAT Component, initialize it as such
-				    	console.log("brandon", componentType)
 				    	CTATTutor.initializeHTMLComponent(item, componentType);
-				    	console.log('brandon initialized HTML component');
 				    }
 				    
 				    item.setAttribute('draggable', true);
 					item.setAttribute('unselectable', 'on');
-					console.log('brandon set draggable true???');
 
 				    var oldLength = original.childNodes.length;
 				    var newLength = item.childNodes.length;
@@ -289,9 +308,11 @@ CTATDragSource = function() {
 				    		item.childNodes[i].setAttribute('value',original.childNodes[i].value);
 				    		item.childNodes[i].innerHTML = original.childNodes[i].innerHTML;
 
+				    		/*
 				    		original.childNodes[i].classList.remove("CTAT--correct");
 				    		original.childNodes[i].classList.remove("CTAT--incorrect");
 				    		original.childNodes[i].classList.remove("CTAT--hint");
+				    		*/
 					    }
 					}
 					if (oldLength !== newLength){ //case of non-ctat component with children
@@ -301,9 +322,11 @@ CTATDragSource = function() {
 						for (var i = 0; i < oldLength; i++){
 				    		item.appendChild(original.childNodes[i].cloneNode(true));
 
+				    		/*
 				    		original.childNodes[i].classList.remove("CTAT--correct");
 				    		original.childNodes[i].classList.remove("CTAT--incorrect");
 				    		original.childNodes[i].classList.remove("CTAT--hint");
+				    		*/
 					    }
 					}
 				}
@@ -323,6 +346,11 @@ CTATDragSource = function() {
 					comp.setActionInput('Add',item_id);
 					//console.log(comp.getSAI().getSelection(),comp.getSAI().getAction(),comp.getSAI().getInput());
 					comp.processAction();
+
+					if ($(this).attr('data-ctat-max-overflow') !== null && 
+						this.childNodes.length > $(this).attr('data-ctat-max-overflow')){
+						pointer.animatedRemove(this.firstChild.id);
+					}
 				}
 			}
 		}, false);
@@ -444,7 +472,7 @@ CTATDragSource = function() {
 };
 
 CTATDragSource.dragging = {};
-CTATDragSource.default_groupname = 'DragSourceGroup';
+CTATDragSource.default_groupname = 'DragNDropGroup'; //for compatibility with DragNDrop
 
 
 CTATDragSource.prototype = Object.create(CTAT.Component.Base.Tutorable.prototype);
